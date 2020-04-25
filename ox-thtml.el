@@ -1,8 +1,8 @@
 ;;; ox-thtml.el --- Handlebar-style templates for org-mode
 
-;; Copyright (C) 2019 Juan JosÃ© GarcÃ­a Ripoll
+;; Copyright (C) 2019 Juan José García Ripoll
 
-;; Author: Juan JosÃ© GarcÃ­a Ripoll <juanjose.garciaripoll@gmail.com>
+;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
 ;; URL: http://juanjose.garciaripoll.com
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -17,6 +17,15 @@
 ;;
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+(defvar templated-html-site-title "Homepage"
+  "Default title for every page in the exported site")
+
+(defvar templated-html-site-description "Personal homepage exported with org-thtml"
+  "Default description for every page in the exported site")
+
+(defvar templated-html-site-url "http://nowhere.org"
+  "Full URL for the root of the site exported by org-thtml")
 
 (require 'ox-publish)
 
@@ -81,10 +90,13 @@ Return output file name."
                  (input-url (templated-html--absolute-path input-file real-root "html"))
                  (root (templated-html--relative-path input-file real-root))
                  (date (org-publish-find-date input-file info))
-                 (description "")
+                 (description (if (plist-get info :description)
+                                  (org-export-data (plist-get info :description) info)
+                                templated-html-site-description))
                  (with-title (plist-get info :with-title))
-                 (title (and (plist-get info :title)
-                             (org-export-data (plist-get info :title) info)))
+                 (title (if (plist-get info :title)
+                            (org-export-data (plist-get info :title) info)
+                          templated-html-site-title))
                  (image (or (templated-html--image-name info)
                             (car (templated-html--collect-images info))))
                  image-url image-width image-height)
@@ -251,3 +263,18 @@ PROJECT is the current project."
            (byte-compile `(lambda (title list)
                             (org-simple-rss--body title ,rss-description ,rss-root list))))
      alist)))
+
+(defun templated-html-create-sitemap-xml (output directory base-url &rest regexp)
+  (let* ((rx (or regexp "\\.html")))
+    (with-temp-file output
+      (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<urlset
+      xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"
+      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+      xsi:schemaLocation=\"
+            http://www.sitemaps.org/schemas/sitemap/0.9
+            http://www.sitemaps.org/schemas/sitemap/09/sitemap.xsd\">\n")
+      (loop for file in (directory-files-recursively directory rx)
+            do (insert (format "<url>\n <loc>%s/%s</loc>\n <priority>0.5</priority>\n</url>\n"
+                               base-url (file-relative-name file directory))))
+      (insert "</urlset>"))))

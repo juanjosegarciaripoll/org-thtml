@@ -54,9 +54,10 @@ Any Emacs Lisp variable is acceptable, but our template system exposes the follo
 - ~info~. Org-mode property list for the transcribed file.
 - ~root~. Relative path to the top.
 - ~input-url~. URL of this page, relative to the root.
+- ~site-url~. URL of the domain this site is exported to, as defined by ~templated-html-site-url~.
 - ~date~. Full date (localized) of the published file. Can be set using ~#+DATE~ option.
-- ~title~. Full title of the page, if provided.
-- ~description~. Description of the page, created with org's ~#+DESCRIPTION~.
+- ~title~. Full title of the page, if provided, or ~templated-html-site-url~.
+- ~description~. Description of the page, created with org's ~#+DESCRIPTION~, or ~templated-html-site-description~.
 - ~image-url~, ~image-width~ and ~image-heigh~. Relative URL and dimensions of either the first image in the page, or the image you select with org's ~#+IMAGE~.
 
 *** Lisp forms
@@ -192,7 +193,24 @@ The following setup summarizes how I build my own site. It consists of three com
 ;;
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #+end_src
+
+** Some configuration
+These variables are provided to help you configure your site more easily, with default values for title, site URL and description. They provide default values for the template variables ~title~, ~site-url~ and ~description~. While they are not essential, they are convenient.
+
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defvar templated-html-site-title "Homepage"
+    "Default title for every page in the exported site")
+
+  (defvar templated-html-site-description "Personal homepage exported with org-thtml"
+    "Default description for every page in the exported site")
+
+  (defvar templated-html-site-url "http://nowhere.org"
+    "Full URL for the root of the site exported by org-thtml")
+
+#+end_src
+
 
 ** Extend the HTML framework
 We construct our framework by extending ~ox-html~, the system that allows publishing org files to HTML. The function ~templated-html-template-fun~ will be responsible for publishing the org files to templated HTML if the ~:html-template~ option points to a valid template.
@@ -222,6 +240,7 @@ We construct our framework by extending ~ox-html~, the system that allows publis
                         org-html-extension
                         "html"))
                 plist pub-dir))
+
 #+end_src
 
 ** Loading templates
@@ -266,10 +285,13 @@ Our template mechanism translates a template file into a Lisp function that is u
                    (input-url (templated-html--absolute-path input-file real-root "html"))
                    (root (templated-html--relative-path input-file real-root))
                    (date (org-publish-find-date input-file info))
-                   (description "")
+                   (description (if (plist-get info :description)
+                                    (org-export-data (plist-get info :description) info)
+                                  templated-html-site-description))
                    (with-title (plist-get info :with-title))
-                   (title (and (plist-get info :title)
-                               (org-export-data (plist-get info :title) info)))
+                   (title (if (plist-get info :title)
+                              (org-export-data (plist-get info :title) info)
+                            templated-html-site-title))
                    (image (or (templated-html--image-name info)
                               (car (templated-html--collect-images info))))
                    image-url image-width image-height)
@@ -287,6 +309,7 @@ Our template mechanism translates a template file into a Lisp function that is u
                  (message "Image url: %s" image-url)
                  )
                ,forms))))
+
 #+end_src
 
 ** Template parser
@@ -381,6 +404,7 @@ The following functions implement the special processing of conditionals, loops 
     `(apply 'concat
             (loop for item in ,(car form)
                   collect ,(templated-html--read-block :endeach))))
+
 #+end_src
 
 ** Bonus: RSS files
@@ -451,4 +475,25 @@ The following utility function can be used to produce a simple RSS feed out of a
              (byte-compile `(lambda (title list)
                               (org-simple-rss--body title ,rss-description ,rss-root list))))
        alist)))
+
+#+end_src
+
+** Bonus: sitemap.xml files
+The following utility creates a ~sitemap.xml~ file from a directory of HTML files. Sitemaps are important for search engines to index your site properly. This function crawls recursively the HTML folder, looking for HTML files that need to be indexed, and records them in the sitemap.
+#+begin_src emacs-lisp  :results silent :tangle ox-thtml.el
+  (defun templated-html-create-sitemap-xml (output directory base-url &rest regexp)
+    (let* ((rx (or regexp "\\.html")))
+      (with-temp-file output
+        (insert "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+  <urlset
+        xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"
+        xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"
+        xsi:schemaLocation=\"
+              http://www.sitemaps.org/schemas/sitemap/0.9
+              http://www.sitemaps.org/schemas/sitemap/09/sitemap.xsd\">\n")
+        (loop for file in (directory-files-recursively directory rx)
+              do (insert (format "<url>\n <loc>%s/%s</loc>\n <priority>0.5</priority>\n</url>\n"
+                                 base-url (file-relative-name file directory))))
+        (insert "</urlset>"))))
+
 #+end_src
