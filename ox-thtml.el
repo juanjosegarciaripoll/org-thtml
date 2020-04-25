@@ -1,8 +1,8 @@
 ;;; ox-thtml.el --- Handlebar-style templates for org-mode
 
-;; Copyright (C) 2019 Juan José García Ripoll
+;; Copyright (C) 2019 Juan Jose Garcia Ripoll
 
-;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
+;; Author: Juan JosÃ© GarcÃ­a Ripoll <juanjose.garciaripoll@gmail.com>
 ;; URL: http://juanjose.garciaripoll.com
 
 ;; This program is free software; you can redistribute it and/or modify

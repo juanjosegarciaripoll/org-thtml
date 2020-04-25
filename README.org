@@ -176,7 +176,7 @@ The following setup summarizes how I build my own site. It consists of three com
 #+begin_src emacs-lisp :results silent :tangle ox-thtml.el
 ;;; ox-thtml.el --- Handlebar-style templates for org-mode
 
-;; Copyright (C) 2019 Juan José García Ripoll
+;; Copyright (C) 2019 Juan Jose Garcia Ripoll
 
 ;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
 ;; URL: http://juanjose.garciaripoll.com
