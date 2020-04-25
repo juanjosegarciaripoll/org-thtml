@@ -1,0 +1,454 @@
+#+title: Org-THTML: An HTML template system for org-mode
+#+date: <2020-04-24 vi.>
+
+* Motivation
+I needed to rewrite my homepage https://juanjose.garciaripoll.com and move it from Google Docs. I decided to create static HTML pages, because they are easy to build, load fast and can be put behind a CDN that would make my system more responsive. Plus, static pages can be generated from a variety of text-based markup languages that are fun to work with, such as markdown or org-mode.
+
+In designing my setup, I decided I did not want to use third party frameworks. In particular, I do not want to depend on Javascript (Metalsmith) or Go (Hugo), as I did in the past, because they are complicated to maintain, have a lot of dependencies and break over time.
+
+An obvious solution was to use org-mode as markup language and rely on Emacs' own publishing framework, called ~org-publish~, to do the heavy lifting. There are many [[https://ogbe.net/blog/blogging_with_org.html][nice examples]] and [[https://orgmode.org/worg/org-tutorials/org-publish-html-tutorial.html][tutorials]] out in the web, but they all rely in ~org-html-publish-to-html~ to generate the HTML file with a fixed structure and minimal changes in style and organization. There is no room for adapting the generated output and how text is enclosed in ~div~'s.
+
+My solution to this is to create a minimal publishing framework that extends the one for HTML, replacing the HTML generation with a templating mechanism that allows the evaluation of arbitrary lisp code, inserting the translated org text, etc.
+
+* Templating system
+** Syntax
+A template file is typically an HTML text with special sections of lisp code enclosed between braces. The templating syntax is reminiscent of [[https://handlebarsjs.com/][Handlebar]], but it is not compatible. An example template would be
+#+begin_src html
+<!doctype html>
+<html lang="en">
+  <head>
+    {{:include "header.html"}}
+  </head>
+  <body>
+
+    <div id="layout" class="pure-g">
+      {{:include "sidebar.html"}}
+      <div class="content pure-u-1 pure-u-md-2-3">
+        {{:include "menubar.html"}}
+
+        <div id="content">
+          {{:if title}}<h1>{{title}}</h1>{{:endif}}
+          {{:if date}}<div class="post-meta">Published on {{format-time-string "%b %d, %Y" date}}</div>{{:endif}}
+          {{contents}}
+        </div>
+
+        {{:include "footer.html"}}
+      </div>
+    </div>
+  </body>
+</html>
+#+end_src
+
+This template illustrates three features of the system:
+- The simplest templates are Lisp expressions that evaluate to strings, as in ~{{title}}~.
+- There are conditional expressions ~{{:if condition}}~ and loops ~{{:each list-value}}~.
+- Templates can be nested and include other template files ~{{:include filename}}~.
+
+** Expressions
+*** Atomic expressions
+
+A template expression with one element ~{{a}}~ is evaluated in the Lisp interpreted as a single element form. Here, ~a~ can be a string or a variable name that evaluates to a string value, which will be inserted in the output of the template.
+
+Any Emacs Lisp variable is acceptable, but our template system exposes the following local variables:
+- ~contents~. The html transcribed text for the org file.
+- ~info~. Org-mode property list for the transcribed file.
+- ~root~. Relative path to the top.
+- ~input-url~. URL of this page, relative to the root.
+- ~date~. Full date (localized) of the published file. Can be set using ~#+DATE~ option.
+- ~title~. Full title of the page, if provided.
+- ~description~. Description of the page, created with org's ~#+DESCRIPTION~.
+- ~image-url~, ~image-width~ and ~image-heigh~. Relative URL and dimensions of either the first image in the page, or the image you select with org's ~#+IMAGE~.
+
+*** Lisp forms
+
+A template with more than one element ~{{a b c d ...}}~ is evaluated as a lisp form ~(a b c ...)~, unless the first element is a special word, :if, :each or :include. The output of this form is interpreted and should return a valid string that is inserted in the output of the template.
+
+*** Conditional forms :if
+
+Conditional forms have the structure
+#+begin_src ascii
+{{:if condition}}
+template-body
+{{:endif}}
+#+end_src
+
+~condition~ must be a valid lisp expression that is evaluated to true or false. If the value of the condition is true, the body of the template is processed and its value inserted in the template output. There are no ~{{:else}}~ forms.
+
+*** Loops :each
+
+Templates may iterate over the values of a list, producing each time a different output that depends on the list element. The construct's structure reads
+#+begin_src ascii
+{{:each list}}
+template-body
+{{:endeach}}
+#+end_src
+
+~list~ must be a valid lisp expression that will evaluate to a list value at run time. The system will iterate over the elements of the list, assigning the variable ~item~ the value of the element and evaluating ~template-body~ to produce strings that are incorporated into the template's output.
+
+** An example
+The following setup summarizes how I build my own site. It consists of three components:
+- ~homepage-blog:~ A programming and science blog, stored under ~./blog~
+- ~homepage-pages:~ Additional org-mode pages, stored in various folders.
+- ~homepage-assets:~ Stylesheets, images and other supporting files.
+
+#+begin_src emacs-lisp :results silent
+  ;; I use this to have syntax highlight in my blog's source code
+  (use-package htmlize
+    :ensure t)
+
+  ;; Load the templating framework
+  (load "ox-thtml.el")
+
+  (setq org-publish-project-alist
+        `(
+          ("homepage-blog"
+           :base-directory ,(expand-file-name "./blog")
+           :root-directory ,(expand-file-name "./")
+           :recursive t
+           :base-extension "org"
+           :publishing-directory ,(expand-file-name "./public_html/blog")
+           ;; Exclude the blog archive index autogenerated below
+           ;; Note that the regexp is relative to :base-directory
+           :exclude "^index.org"
+           :section-numbers nil
+           :with-toc nil
+           :with-date nil
+           :html-template ,(templated-html-load-template "templates/blog.html")
+           :publishing-function org-html-publish-to-templated-html
+           :auto-sitemap t
+           :sitemap-folders ignore
+           :sitemap-style list
+           :sitemap-title "Juanjo García-Ripoll's blog"
+           :sitemap-filename "sitemap.inc"
+           :sitemap-sort-files anti-chronologically
+           )
+          ;; Use also our backend for simple RSS files.
+          ,(org-simple-rss-alist
+            "homepage-rss"
+            :base-directory (expand-file-name "./blog")
+            :root-directory (expand-file-name "./")
+            :recursive t
+            :base-extension "org"
+            :publishing-directory (expand-file-name "./public_html/blog")
+            ;; Exclude the blog archive index autogenerated below
+            ;; Note that the regexp is relative to :base-directory
+            :exclude "^index.org"
+            ;; The location of the RSS file is relative to :base-directory
+            ;; Unfortunately, this is a limitation of using org-publish-sitemap
+            :rss-filename "../public_html/blog/rss.xml"
+            :rss-title "Juanjo García-Ripoll's blog"
+            :rss-description "My blog of Emacsy things, programming and science"
+            :rss-root "https://juanjose.garciaripoll.com/blog/")
+          ("homepage-pages"
+           :base-directory ,(expand-file-name "./")
+           :recursive t
+           :base-extension "org"
+           :include ("blog/index.org")
+           :exclude ,(regexp-opt '("blog"))
+           :publishing-directory ,(expand-file-name "./public_html")
+           :section-numbers nil
+           :with-toc nil
+           :with-date nil
+           :html-template ,(templated-html-load-template "templates/index.html")
+           :publishing-function org-html-publish-to-templated-html
+           )
+          ("homepage-assets"
+           :base-directory "./"
+           :publishing-directory "./public_html"
+           :recursive t
+           :exclude "\\(public_html\\|examples\\|templates\\).*"
+           :base-extension "jpg\\|gif\\|png\\|css\\|js\\|nb\\|ipynb\\|pdf\\|c\\|zip"
+           :publishing-function org-publish-attachment)
+          ("homepage" :components ("homepage-blog" "homepage-pages" "homepage-assets"))
+          ))
+
+  ;;
+  ;; Publish the whole site into a subdirectory, as explained above. Start from
+  ;; scratch every time, at least until framework converges
+  (shell-command "cmd.exe /c rmdir /S /Q public_html")
+  (org-publish "homepage" t)
+#+end_src
+
+
+* Implementation
+** Copyright forms
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+;;; ox-thtml.el --- Handlebar-style templates for org-mode
+
+;; Copyright (C) 2019 Juan José García Ripoll
+
+;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
+;; URL: http://juanjose.garciaripoll.com
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#+end_src
+
+** Extend the HTML framework
+We construct our framework by extending ~ox-html~, the system that allows publishing org files to HTML. The function ~templated-html-template-fun~ will be responsible for publishing the org files to templated HTML if the ~:html-template~ option points to a valid template.
+
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (require 'ox-publish)
+
+  (org-export-define-derived-backend 'templated-html 'html
+    :translate-alist '((template . templated-html-template-fun)))
+
+  (defun templated-html-template-fun (contents info)
+    (let ((template (plist-get info :html-template)))
+      (if template
+          (funcall template contents info)
+        (org-html-template contents info))))
+
+  (defun org-html-publish-to-templated-html (plist filename pub-dir)
+    "Publish an org file to HTML.
+
+  FILENAME is the filename of the Org file to be published.  PLIST
+  is the property list for the given project.  PUB-DIR is the
+  publishing directory.
+
+  Return output file name."
+    (org-publish-org-to 'templated-html filename
+                (concat "." (or (plist-get plist :html-extension)
+                        org-html-extension
+                        "html"))
+                plist pub-dir))
+#+end_src
+
+** Loading templates
+Our template mechanism translates a template file into a Lisp function that is used by ~org-publish~ to produce the actual output. The function ~templated-html-load-template~ loads the template file into an Emacs buffer and uses the parser to generate a list of forms. These forms are integrated into a ~lambda~ function that defines all the local variables and does some pre-processing of the input that will be inserted into the template.
+
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defvar templated-html--current-template nil)
+
+  (defun templated-html-load-template (filename)
+    (templated-html--byte-compile (templated-html--load-template filename)))
+
+  (defun templated-html--load-template (filename)
+    (let ((templated-html--current-template filename))
+      (with-temp-buffer
+        (insert-file-contents filename)
+        (templated-html--read-block))))
+
+  (defun templated-html--image-name (info)
+    (let (image)
+      (org-element-map (plist-get info :parse-tree) 'keyword
+        (lambda (k)
+          (when (equal (org-element-property :key k) "IMAGE")
+            (setq image (org-element-property :value k)))))
+      image))
+
+  (defun templated-html--collect-images (info)
+    (let (images)
+      (org-element-map (plist-get info :parse-tree) 'link
+        (lambda (k)
+          (when (equal (org-element-property :type k) "file")
+            (let ((path (org-element-property :path k)))
+              (when (string-match ".\\(jpe?g\\|png\\)" path)
+                (setq images (cons path images)))))))
+      (nreverse images)))
+
+  (defun templated-html--byte-compile (forms)
+    (byte-compile
+         `(lambda (contents info)
+            (let* ((real-root (expand-file-name (or (plist-get info :root-directory)
+                                                    (plist-get info :base-directory))))
+                   (input-file (plist-get info :input-file))
+                   (input-url (templated-html--absolute-path input-file real-root "html"))
+                   (root (templated-html--relative-path input-file real-root))
+                   (date (org-publish-find-date input-file info))
+                   (description "")
+                   (with-title (plist-get info :with-title))
+                   (title (and (plist-get info :title)
+                               (org-export-data (plist-get info :title) info)))
+                   (image (or (templated-html--image-name info)
+                              (car (templated-html--collect-images info))))
+                   image-url image-width image-height)
+               (when image
+                 (setq image (expand-file-name image))
+                 (let* ((image-object (create-image image)))
+                   (when image-object
+                     (let ((image-size (image-size image-object)))
+                       (message "Image size %S for %s" image-size image)
+                       (setq image-width (format "%d" (round (* (car image-size) (frame-char-width))))
+                             image-height (format "%d" (round (* (cdr image-size) (frame-char-height)))))))
+                   (setq image-url (templated-html--absolute-path image real-root)))
+                 (message "Image: %s" image)
+                 (message "Root: %s" real-root)
+                 (message "Image url: %s" image-url)
+                 )
+               ,forms))))
+#+end_src
+
+** Template parser
+The core of the parser is implemented by ~templated-html--read-block~, which goes through the template, looking for handlebar-type forms ~{{s-exp}}~. The text in between such forms is collected into strings. The text inside a handlebar form is read by ~templated-html--read-form~, which produces a list. ~templated-html--read-block~ then inspects that list to see whether the form is special (~:if~, ~:each~ or ~:include~) or whether it is an ordinary Lisp form that will evaluate to a string.
+
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defvar templated-html-helper-alist
+    '((:include . templated-html--include)
+      (:if . templated-html--if)
+      (:each . templated-html--each)
+      (:endeach . templated-html--syntax-error)
+      (:endif . templated-html--syntax-error)))
+
+  (defun templated-html--read-block (&rest end-marks)
+    "Read the template buffer, transforming it into lisp
+  statements. It reads the HTML until a handleblar expression
+  {{form}} is found. Text in between expressions is inserted as is
+  into the template. Forms {{a b c ...}} are interpreted as lisp
+  expressions (a b c ...) except when they consist of just one
+  element {{a}} which is read as-is. Special forms where 'a' is one
+  of :if, :each, :include are delegated to helper functions."
+    (loop with forms = nil
+          with head = nil
+          for item = (print (templated-html--read-form))
+          while (not (or (eq item ':eof)
+                         (member item end-marks)))
+          do (cond ((null item))
+                   ((atom item)
+                    ;; Maybe transcode characters to HTML entities?
+                    (push item forms))
+                   ((setq head (assoc (car item) templated-html-helper-alist))
+                    (push (funcall (cdr head) (rest item)) forms))
+                   (t
+                    (push item forms)))
+          finally return `(concat ,@(nreverse forms))))
+
+  (defun templated-html--read-form ()
+    "Extract the next form in the template. It can be either a
+  string, or an s-expression enclosed in a handlerbar {{form}}."
+    (let ((beg (point)))
+      (cond ((= beg (point-max))
+             ':eof)
+            ((and (> beg (point-min))
+                  (eq (char-before) ?{))
+             ;; We are reading an s-exp from a handlebar template
+             (if (re-search-forward "\\([^}]+\\)}}" nil 'noerror)
+                 (let* ((data (match-data t))
+                        (form (buffer-substring (nth 2 data) (nth 3 data)))
+                        (s-exp (car (read-from-string (format "(%s)" form)))))
+                   (if (= (length s-exp) 1)
+                       (car s-exp)
+                     s-exp))
+               (error "Invalid template file %s" filename)))
+            (t
+             ;; We are reading a string until the next handlebar expression
+             (if (search-forward "{{" nil 'noerror)
+                 (buffer-substring beg (- (point) 2))
+               (buffer-substring beg (point-max)))))))
+
+#+end_src
+
+The following functions implement the special processing of conditionals, loops and template inclusion. Note that in ~{{:include filename}}~, the path of ~filename~ is interpreted relative to the last loaded template. This allows for easy nesting of templates in subdirectories.
+
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defun templated-html--relative-path (input base)
+    (apply 'concatenate 'string
+             (loop for i in (rest (split-string (file-relative-name input-file base)
+                                          "[/\\]"))
+                   collect "../")))
+
+  (defun templated-html--absolute-path (input-file real-root &optional ext)
+    (let ((file-name (concat "/" (file-relative-name input-file real-root))))
+      (if ext
+          (concat (file-name-sans-extension file-name) "." ext)
+        file-name)))
+
+  (defun templated-html--include (form)
+    "Handler for {{:include filename}} statements."
+    (let* ((value (car form))
+           (filename (expand-file-name (if (stringp value) value (format "%s" value))
+                                       (file-name-directory templated-html--current-template))))
+      (templated-html--load-template filename)))
+
+  (defun templated-html--if (form)
+    "Handler for {{:if condition}}...{{:endif}} blocks."
+    `(if ,(car form)
+         ,(templated-html--read-block :endif)
+       ""))
+
+  (defun templated-html--each (form)
+    "Handler for {{:each list}}...{{:endeach}} blocks."
+    `(apply 'concat
+            (loop for item in ,(car form)
+                  collect ,(templated-html--read-block :endeach))))
+#+end_src
+
+** Bonus: RSS files
+The following utility function can be used to produce a simple RSS feed out of a blog's sitemap. It copies the utility of the default sitemap producing function, hooks into the list creation process to engineer its own RSS feed. It was strongly inspired by [[https://writepermission.com/org-blogging-rss-feed.html][this blog post]], but has the advantage that it does not require ox-rss. On the downside, it produces much simpler RSS files, with no description and, right now, no image files.
+
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defun org-simple-rss--body (title description root list)
+    "Generate RSS feed, as a string.
+  TITLE is the title of the RSS feed.  LIST is an internal
+  representation for the files to include, as returned by
+  `org-list-to-lisp'.  PROJECT is the current project."
+    (with-temp-buffer
+      (insert (format "<?xml version='1.0' encoding='UTF-8' ?>
+  <rss version='2.0'>
+  <channel>
+   <title>%s</title>
+   <link>%s</link>
+   <description>%s</description>"
+                      title root description))
+      (dolist (l list)
+        (when (and (listp l) (stringp (car l)))
+          (insert (car l))))
+      (insert "</channel>\n</rss>")
+      (buffer-string)))
+
+  (defun org-simple-rss--entry (entry style project)
+    "Format ENTRY for the RSS feed.
+  ENTRY is a file name.  STYLE is either 'list' or 'tree'.
+  PROJECT is the current project."
+    (message "org-publish-entry %s" entry)
+    (cond ((not (directory-name-p entry))
+           (let* ((rss-root (or (org-publish-property :rss-root project) ""))
+                  (file (org-publish--expand-file-name entry project))
+                  (title (org-publish-find-title entry project))
+                  (date (format-time-string "%Y-%m-%d" (org-publish-find-date entry project)))
+                  (link (concat rss-root (file-name-sans-extension entry) ".html")))
+             (format "  <item>\n   <title>%s</title>\n   <link>%s</link>\n   <pubDate>%s</pubDate>\n  </item>\n" title link date)))
+          ((eq style 'tree)
+           ;; Return only last subdir.
+           (file-name-nondirectory (directory-file-name entry)))
+          (t entry)))
+
+  (defun org-simple-rss-alist (name &rest alist)
+    (let* ((project (cons name alist))
+           (rss-title (org-publish-property :rss-title project))
+           (rss-filename (org-publish-property :rss-filename project))
+           (rss-description (org-publish-property :rss-description project))
+           (rss-root (org-publish-property :rss-root project)))
+      (unless rss-title
+        (user-error "Missing :rss-title in org-publish project %s" name))
+      (unless rss-filename
+        (user-error "Missing :rss-filename in org-publish project %s" name))
+      (unless rss-description
+        (user-error "Missing :rss-description in org-publish project %s" name))
+      (unless rss-root
+        (user-error "Missing :rss-root in org-publish project %s" name))
+      (append
+       (list name
+             :publish-function (lambda (a b c) nil)
+             :auto-sitemap t
+             :sitemap-title rss-title
+             :sitemap-style 'list
+             :sitemap-filename rss-filename
+             :sitemap-sort-files 'anti-chronologically
+             :publishing-function (byte-compile '(lambda (&rest r) nil))
+             :sitemap-format-entry 'org-simple-rss--entry
+             :sitemap-function
+             (byte-compile `(lambda (title list)
+                              (org-simple-rss--body title ,rss-description ,rss-root list))))
+       alist)))
+#+end_src
