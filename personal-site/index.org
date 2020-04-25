@@ -3,7 +3,7 @@
 #+image: images/me.png
 
 * About
-- This is an example of a personal site built with [org-thtml](https://github.com/juanjosegarciaripoll/org-thtml)
+- This is an example of a personal site [[https://github.com/juanjosegarciaripoll/org-thtml][built with org-thtml]]
 - It exemplifies the following features
   + Use of templates to create custom HTML.
   + Use of stylesheets.
@@ -18,13 +18,19 @@
   + ~public_html/~ The folder where the site is recreated
 - The code below shows how to configure the site and how to publish it to ~public-html/~
 - For brevity, the ~templates/~ folder is also recreated from this file
+- In order to see the actual code of the page, please [[https://raw.githubusercontent.com/juanjosegarciaripoll/org-thtml/master/personal-site/index.org][look at the raw file]]
+- This org-file is automatically translated into
+  + A [[https://github.com/juanjosegarciaripoll/org-thtml/tree/master/personal-site/templates][collection of templates]]
+  + An [[https://github.com/juanjosegarciaripoll/org-thtml/blob/master/personal-site/make.el][emacs lisp script]] that generates the web page in ~public_html~
 
 * My personal blog
 
+This list is automatically generated from ~blog/sitemap.inc~
 #+include: blog/sitemap.inc
 
 * My recipes
 
+This list is automatically generated from ~blog/recipes.inc~
 #+include: recipes/recipes.inc
 
 * Creating the structure                                           :noexport:
@@ -48,7 +54,7 @@ You need to execute the following code to create the basic structure of the site
 
 * The templates                                                    :noexport:
 ** A full blog page
-A blog page consists of
+The template in ~templates/blog.html~ describes a full page, consisting of
 - the common HTML header section
 - a sidebar with personal information
 - a menubar with links to other sections of the page
@@ -83,7 +89,7 @@ A blog page consists of
 
 ** HTML header
 
-Every HTML file has a header with metadata information about the page. The following template creates a header that informs the browser about
+Every HTML file has a header with metadata information about the page. The template ~template/header.html~ creates a header that informs the browser about
 - The title of the page, extracted from the page's ~#+title:~ file or from ~templated-html-site-title~
 - The description of the page, extracted from ~#+description:~ or from ~templated-html-site-description~
 - A Facebook card with
@@ -130,7 +136,8 @@ Every HTML file has a header with metadata information about the page. The follo
 #+end_src
 
 ** The sidebar
-We use font-awesome
+The template ~template/sidebar.html~ provides a menu for various sources of personal information, including picture of the user, name, organization, accounts in GitHub, Linkedin, Twitter, Google Scholar, etc. They are configured using variables that are defined below.
+
 #+begin_src html :results none :tangle templates/sidebar.html
   <div class="sidebar pure-u-1 pure-u-md-1-3">
     <div class="header">
@@ -178,7 +185,7 @@ We use font-awesome
 #+end_src
 
 ** Menubar
-A line with a few global links at the top.
+The template ~template/menubar.html~ produces a line with a few global links at the top.
 #+begin_src html :results none :tangle templates/menubar.html
   <div class="pure-menu pure-menu-horizontal">
     <ul class="pure-menu-list">
@@ -190,7 +197,7 @@ A line with a few global links at the top.
 #+end_src
 
 ** Footer
-This footer is included at the end of all templates.
+~template/footer.html~ footer is included at the end of all pages.
 #+begin_src html :results none :tangle templates/footer.html
   <div class="footer">
     <hr>
@@ -200,7 +207,7 @@ This footer is included at the end of all templates.
 #+end_src
 
 ** A separate blog for cooking
-We create a different template for our cooking blog, because we want to customize the CSS.
+We create a different template, ~recipe.html~, for our cooking blog, because we want to customize the CSS.
 #+begin_src html :results none :tangle templates/recipe.html
   <!doctype html>
   <html lang="en">
@@ -240,7 +247,7 @@ We create a different template for our cooking blog, because we want to customiz
 #+end_src
 
 ** A template for all other pages
-This template will apply to the index page at the top, as well as to other non-blog pages
+The ~template/index.html~ is applied to the index page at the top, as well as to other non-blog pages
 #+begin_src html :results none :tangle templates/index.html
   <!doctype html>
   <html lang="en">
