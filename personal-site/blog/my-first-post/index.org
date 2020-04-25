@@ -1,0 +1,14 @@
+#+title: My first post
+#+date: <2020-04-20 lu.>
+#+description: This is my first post.
+
+#+begin_verse
+I have decided to open my tini tiny blog.
+This is my first entry.
+It is obviously very short.
+But I leave you here,
+a picture of a dog.
+#+end_verse
+
+#+CAPTION: This is a dog, from Wikipedia
+[[../../images/a-dog.jpg]]

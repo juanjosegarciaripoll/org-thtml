@@ -1,0 +1,17 @@
+#+title: Strawberry smoothie
+#+date: <2020-04-22 mi.>
+
+* Ingredients
+- 250ml almond milk
+- 3 table spoons of oats
+- 100g of ripe strawberries, washed and clean from leaves.
+
+* Steps
+1. Blend the mixture with an immersion blender.
+2. Enjoy :-)
+
+#+CAPTION: The outcome!
+[[./smoothie.jpg]]
+
+#+CAPTION: The ingredients
+[[./strawberries.jpg]]

@@ -1,0 +1,12 @@
+#+title: I get it
+#+date: <2020-04-21 ma.>
+
+Now this thing of building pages makes more sense to me. I am going to re-read the [[https://github.com/juanjosegarciaripoll/org-thtml][org-thtml manual]], though, to fix the concepts.
+
+And now, two pictures of cats.
+
+#+CAPTION: One cat...
+[[../../images/grumpy-cat.jpg]]
+
+#+CAPTION: And a bigger cat
+[[../../images/tiger.jpg]]
