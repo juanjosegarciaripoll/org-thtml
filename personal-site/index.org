@@ -9,19 +9,6 @@
   + Use of stylesheets.
   + Automatic creation of Facebook and Twitter cards.
   + Automatic configuration of links, icons and other personal references.
-- It is organized into three directories
-  + ~blog/~ A directory with a few posts
-  + ~recipes/~ Another directory, to show that a project can have multiple components
-  + ~images/~ A folder with some pictures used in the site
-  + ~css/~ The HTML styles
-  + ~templates/~ The org-thtml templates used to build the pages
-  + ~public_html/~ The folder where the site is recreated
-- The code below shows how to configure the site and how to publish it to ~public-html/~
-- For brevity, the ~templates/~ folder is also recreated from this file
-- In order to see the actual code of the page, please [[https://raw.githubusercontent.com/juanjosegarciaripoll/org-thtml/master/personal-site/index.org][look at the raw file]]
-- This org-file is automatically translated into
-  + A [[https://github.com/juanjosegarciaripoll/org-thtml/tree/master/personal-site/templates][collection of templates]]
-  + An [[https://github.com/juanjosegarciaripoll/org-thtml/blob/master/personal-site/make.el][emacs lisp script]] that generates the web page in ~public_html~
 
 * My personal blog
 
@@ -34,7 +21,21 @@ This list is automatically generated from ~blog/recipes.inc~
 #+include: recipes/recipes.inc
 
 * Creating the structure                                           :noexport:
-You need to execute the following code to create the basic structure of the site. This downloads a few sample images and creates directories which are populated with components that are part of this org-mode file.
+
+This sample site is organized into a collection of directories
+- ~blog/~ A directory with a few posts
+- ~recipes/~ Another directory, to show that a project can have multiple components
+- ~images/~ A folder with some pictures used in the site
+- ~css/~ The HTML styles
+- ~templates/~ The org-thtml templates used to build the pages
+- ~public_html/~ The folder where the site is recreated
+
+The code in this org file shows how to configure the site and how to publish it to ~public-html/~. This org-file is automatically translated into
+- A [[https://github.com/juanjosegarciaripoll/org-thtml/tree/master/personal-site/templates][collection of templates]]
+- An [[https://github.com/juanjosegarciaripoll/org-thtml/blob/master/personal-site/make.el][emacs lisp script]] that generates the web page in ~public_html~
+In order to see the actual code of the page, please [[https://raw.githubusercontent.com/juanjosegarciaripoll/org-thtml/master/personal-site/index.org][look at the raw file]]
+
+We begin our Emacs lisp script with some code to create the basic structure of the site. This downloads a few sample images and creates directories which are populated with components that are part of this org-mode file.
 #+begin_src emacs-lisp :results none :tangle make.el
   (dolist (d '("public_html" "images"))
     (unless (file-exists-p d)
