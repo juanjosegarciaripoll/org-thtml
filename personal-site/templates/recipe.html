@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    {{:include "header.html"}}
+    <style>
+.figure {
+    float: left;
+    max-width: 40%;
+    padding: 1em;
+}
+.figure img {
+    border-radius: 1em;
+    border: 1px solid #ddd;
+    padding: 0.5em;
+}
+    </style>
+  </head>
+  <body>
+
+    <div id="layout" class="pure-g">
+      {{:include "sidebar.html"}}
+      <div class="content pure-u-1 pure-u-md-2-3">
+        {{:include "menubar.html"}}
+
+        <div id="content">
+          {{:if with-title}}<h1>{{title}}</h1>{{:endif}}
+          {{:if date}}<div class="post-meta">Published on {{format-time-string "%b %d, %Y" date}}</div>{{:endif}}
+          {{contents}}
+        </div>
+
+        {{:include "footer.html"}}
+      </div>
+    </div>
+  </body>
+</html>

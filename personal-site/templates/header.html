@@ -1,0 +1,34 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="{{description}}">
+{{:if title}}
+  <title>{{title}}</title>
+  <meta property="og:url" content="{{site-url}}{{input-url}}" />
+  <meta property="og:title" content="{{title}}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:description" content="{{description}}" />
+  {{:if image}}
+    <meta property="og:image" content="{{site-url}}{{image-url}}" />
+    <meta property="og:image:width" content="{{image-width}}" />
+    <meta property="og:image:height" content="{{image-height}}" />
+  {{:endif}}
+  {{:if personal-site-twitter}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@{{personal-site-twitter}}">
+    <meta name="twitter:title" content="{{title}}">
+    <meta name="twitter:description" content="{{description}}">
+    {{:if image}}
+      <meta name="twitter:image" content="https://juanjose.garciaripoll.com{{image-url}}">
+    {{:endif}}
+  {{:endif}}
+{{:endif}}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.1/pure-min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
+<!--[if lte IE 8]>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.1/grids-responsive-old-ie-min.css">
+<link rel="stylesheet" href="{{root}}css/layouts/blog-old-ie.css">
+<![endif]-->
+<!--[if gt IE 8]><!-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.1/grids-responsive-min.css">
+<link rel="stylesheet" href="{{root}}css/layouts/blog.css">
+<!--<![endif]-->

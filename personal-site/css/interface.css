@@ -1,0 +1,41 @@
+body {
+    font-family: Calibri, Arial;
+}
+h1, h2, h3, h4, h5, h6 {
+    font-family: Cambria, Palatino;
+    font-weight: bold
+}
+#preamble {
+    font-family: Arial;
+    text-align: center;
+    margin-bottom: 2em;
+    margin-top: 2em;
+}
+#postamble, .footer {
+    padding: 2em 0;
+    text-align: center;
+}
+.menutitle {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+.menulist {
+    padding: 0;
+}
+hr {
+    width: 30%;
+}
+.menulist li {
+    font-weight: 1.5em;
+    display: inline-block;
+    vertical-align: middle;
+    padding: .5em 1em;
+}
+.menulist a, .menulist a:visited {
+    text-decoration: none;
+}
+#content {
+    max-width: 40em;
+    margin-left: auto;
+    margin-right: auto
+}

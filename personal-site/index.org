@@ -1,0 +1,363 @@
+#+title: Personal site
+#+date: <2020-04-25 sá.>
+#+image: images/me.png
+
+* About
+- This is an example of a personal site built with [org-thtml](https://github.com/juanjosegarciaripoll/org-thtml)
+- It exemplifies the following features
+  + Use of templates to create custom HTML.
+  + Use of stylesheets.
+  + Automatic creation of Facebook and Twitter cards.
+  + Automatic configuration of links, icons and other personal references.
+- It is organized into three directories
+  + ~blog/~ A directory with a few posts
+  + ~recipes/~ Another directory, to show that a project can have multiple components
+  + ~images/~ A folder with some pictures used in the site
+  + ~css/~ The HTML styles
+  + ~templates/~ The org-thtml templates used to build the pages
+  + ~public-html/~ The folder where the site is recreated
+- The code below shows how to configure the site and how to publish it to ~public-html/~
+- For brevity, the ~templates/~ folder is also recreated from this file
+
+* Creating the structure                                           :noexport:
+You need to execute the following code to create the basic structure of the site. This downloads a few sample images and creates directories which are populated with components that are part of this org-mode file.
+#+begin_src emacs-lisp :results nil
+  (dolist (d '("templates" "public_html" "images"))
+    (unless (file-exists-p d)
+      (make-directory d)))
+
+  (url-copy-file "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Person_icon_BLACK-01.svg/200px-Person_icon_BLACK-01.svg.png" "images/me.png")
+
+  (org-babel-tangle)
+#+end_src
+
+* The templates                                                    :noexport:
+
+** A full blog page
+A blog page consists of
+- the common HTML header section
+- a sidebar with personal information
+- a menubar with links to other sections of the page
+- a title header using the ~<h1>~ tag, followed by the content of the page, as exported by ~ox-html~.
+- a footer
+
+#+begin_src html :results nil :tangle templates/blog.html
+  <!doctype html>
+  <html lang="en">
+    <head>
+      {{:include "header.html"}}
+    </head>
+    <body>
+
+      <div id="layout" class="pure-g">
+        {{:include "sidebar.html"}}
+        <div class="content pure-u-1 pure-u-md-2-3">
+          {{:include "menubar.html"}}
+
+          <div id="content">
+            {{:if with-title}}<h1>{{title}}</h1>{{:endif}}
+            {{:if date}}<div class="post-meta">Published on {{format-time-string "%b %d, %Y" date}}</div>{{:endif}}
+            {{contents}}
+          </div>
+
+          {{:include "footer.html"}}
+        </div>
+      </div>
+    </body>
+  </html>
+#+end_src
+
+** A separate blog for cooking
+We create a different template for our cooking blog, because we want to customize the CSS.
+#+begin_src html :results nil :tangle templates/recipe.html
+  <!doctype html>
+  <html lang="en">
+    <head>
+      {{:include "header.html"}}
+      <style>
+  .figure {
+      float: left;
+      max-width: 40%;
+      padding: 1em;
+  }
+  .figure img {
+      border-radius: 1em;
+      border: 1px solid #ddd;
+      padding: 0.5em;
+  }
+      </style>
+    </head>
+    <body>
+
+      <div id="layout" class="pure-g">
+        {{:include "sidebar.html"}}
+        <div class="content pure-u-1 pure-u-md-2-3">
+          {{:include "menubar.html"}}
+
+          <div id="content">
+            {{:if with-title}}<h1>{{title}}</h1>{{:endif}}
+            {{:if date}}<div class="post-meta">Published on {{format-time-string "%b %d, %Y" date}}</div>{{:endif}}
+            {{contents}}
+          </div>
+
+          {{:include "footer.html"}}
+        </div>
+      </div>
+    </body>
+  </html>
+#+end_src
+
+
+** HTML header
+
+Every HTML file has a header with metadata information about the page. The following template creates a header that informs the browser about
+- The title of the page, extracted from the page's ~#+title:~ file or from ~templated-html-site-title~
+- The description of the page, extracted from ~#+description:~ or from ~templated-html-site-description~
+- A Facebook card with
+  + The absolute path of this page, computed from the ~template-html-site-url~
+  + A link to the image shown in Facebook posts, computed from the ~image~ field, with details about size and width.
+  + A copy of the page's description.
+- A Twitter card with similar information, but only if ~personal-site-twitter~ is set.
+
+#+begin_src html :results nil :tangle templates/header.html
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{description}}">
+  {{:if title}}
+    <title>{{title}}</title>
+    <meta property="og:url" content="{{site-url}}{{input-url}}" />
+    <meta property="og:title" content="{{title}}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:description" content="{{description}}" />
+    {{:if image}}
+      <meta property="og:image" content="{{site-url}}{{image-url}}" />
+      <meta property="og:image:width" content="{{image-width}}" />
+      <meta property="og:image:height" content="{{image-height}}" />
+    {{:endif}}
+    {{:if personal-site-twitter}}
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:site" content="@{{personal-site-twitter}}">
+      <meta name="twitter:title" content="{{title}}">
+      <meta name="twitter:description" content="{{description}}">
+      {{:if image}}
+        <meta name="twitter:image" content="https://juanjose.garciaripoll.com{{image-url}}">
+      {{:endif}}
+    {{:endif}}
+  {{:endif}}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.1/pure-min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
+  <!--[if lte IE 8]>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.1/grids-responsive-old-ie-min.css">
+  <link rel="stylesheet" href="{{root}}css/layouts/blog-old-ie.css">
+  <![endif]-->
+  <!--[if gt IE 8]><!-->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pure/1.0.1/grids-responsive-min.css">
+  <link rel="stylesheet" href="{{root}}css/layouts/blog.css">
+  <!--<![endif]-->
+#+end_src
+
+** The sidebar
+We use font-awesome
+#+begin_src html :results nil :tangle templates/sidebar.html
+  <div class="sidebar pure-u-1 pure-u-md-1-3">
+    <div class="header">
+      <a href="{{root}}"><img class="portrait" src="{{root}}images/me.jpg" alt="Juan José García Ripoll"/></a>
+      <h2 class="brand-title">{{personal-site-full-name}}</h2>
+      <h2 class="brand-tagline">Senior scientist</h2>
+      {{:if personal-site-organization}}
+        <h2 class="brand-tagline"><a href="{{personal-site-organization-url}}">{{personal-site-organization}}</a></h2>
+      {{:endif}}
+
+      <nav class="nav">
+        <ul class="nav-list">
+          {{:if personal-site-google-scholar-id}}
+            <li class="nav-item">
+              <a class="pure-button" href="https://scholar.google.es/citations?user={{personal-site-google-scholar-id}}&hl=en"><i class="fab fa-google big-icon"></i></a>
+            </li>
+          {{:endif}
+          {{:if personal-site-twitter}}
+            <li class="nav-item">
+              <a class="pure-button" href="https://twitter.com/{{personal-site-twitter}}"><i class="fab fa-twitter big-icon"></i></a>
+            </li>
+          {{:endif}}
+          {{:if personal-site-github}}
+            <li class="nav-item">
+              <a class="pure-button" href="https://github.com/{{personal-site-github}}"><i class="fab fa-github big-icon"></i></a>
+            </li>
+          {{:endif}}
+          {{:if personal-site-linkedin}}
+            <li class="nav-item">
+              <a class="pure-button" href="https://www.linkedin.com/in/{{personal-site-linkedin}}/"><i class="fab fa-linkedin big-icon"></i></a>
+            </li>
+          {{:endif}}
+          {{:if personal-site-email}}
+            <li class="nav-item">
+              <a class="pure-button" href="mailto:{{personal-site-email}}"><i class="fas fa-envelope big-icon"></i></a>
+            </li>
+          {{:endif}
+          <li class="nav-item">
+            <a class="pure-button" href="https://juanjose.garciaripoll.com/blog/rss.xml"><i class="fas fa-rss big-icon"></i></a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+#+end_src
+
+** Menubar
+A line with a few global links at the top.
+#+begin_src html :results nil :tangle templates/menubar.html
+  <div class="pure-menu pure-menu-horizontal">
+    <ul class="pure-menu-list">
+      <li class="pure-menu-item"><a href="{{root}}index.html#blog" class="pure-menu-link">Blog</a></li>
+      <li class="pure-menu-item"><a href="{{personal-site-organization-url}}" class="pure-menu-link">Work</a></li>
+      <li class="pure-menu-item"><a href="{{root}}index.html#recipes" class="pure-menu-link">Cooking</a></li>
+    </ul>
+  </div>
+#+end_src
+
+** Footer
+This footer is included at the end of all templates.
+#+begin_src html :results nil :tangle templates/footer.html
+  <div class="footer">
+    <hr>
+    <div>Created using Emacs and <a href="https://github.com/juanjosegarciaripoll/org-thtml">org-mode</a></div>
+    <div>(c) Juan José García Ripoll 2019</div>
+  </div>
+#+end_src
+
+* Building the site                                                :noexport:
+
+** Configuration
+We set the variables that our templates expect.
+#+begin_src emacs-lisp :results nil
+  (defvar personal-site-full-name "Juan José García Ripoll"
+    "A string with your full name.")
+
+  (defvar personal-site-position "Senior scientist"
+    "A string with your full position or job appointment.")
+
+  (defvar personal-site-github nil
+    "If not NIL, your GitHub id.")
+
+  (defvar personal-site-google-scholar nil
+    "If not NIL, your Google Scholar URL.")
+
+  (defvar personal-site-linkedin nil
+    "If not NIL, your Linkedin id.")
+
+  (defvar personal-site-organization nil
+    "If not NIL, a string with the name of your organization, without the @ sign.")
+
+  (defvar personal-site-organization-url nil
+    "If not NIL, the URL of your organization.")
+
+  (defvar personal-site-twitter nil
+    "If not NIL, a string with a Twitter handle, without the @ sign.")
+#+end_src
+
+** Declaring the structure
+We create a structure with four subgroups:
+- ~homepage-blog~ for all files under ~blog/~
+- ~homepage-recipes~ for all files under ~recipes/~
+- ~homepage-pages~ for all other pages.
+- ~homepage-assets~ for all non-HTML files, such as images and other resources.
+
+#+begin_src emacs-lisp :results nil
+  (setq org-publish-project-alist
+        `(("homepage-blog"
+           :base-directory ,(expand-file-name "./blog")
+           :root-directory ,(expand-file-name "./")
+           :recursive t
+           :base-extension "org"
+           :publishing-directory ,(expand-file-name "./public_html/blog")
+           ;; Exclude the blog archive index autogenerated below
+           ;; Note that the regexp is relative to :base-directory
+           :exclude "^index.org"
+           :section-numbers nil
+           :with-toc nil
+           :with-date nil
+           :html-template ,(templated-html-load-template "templates/blog.html")
+           :publishing-function org-html-publish-to-templated-html
+           :auto-sitemap t
+           :sitemap-folders ignore
+           :sitemap-style list
+           :sitemap-title ,(concat personal-site-full-name "'s blog")
+           :sitemap-filename "sitemap.inc"
+           :sitemap-sort-files anti-chronologically
+           )
+          ("homepage-recipes"
+           :base-directory ,(expand-file-name "./recipes")
+           :root-directory ,(expand-file-name "./")
+           :recursive t
+           :base-extension "org"
+           :publishing-directory ,(expand-file-name "./public_html/recipes")
+           ;; Exclude the blog archive index autogenerated below
+           ;; Note that the regexp is relative to :base-directory
+           :exclude "^\\(index.org\\|*.inc\\)"
+           :section-numbers nil
+           :with-toc nil
+           :with-date nil
+           :html-template ,(templated-html-load-template "templates/recipe.html")
+           :publishing-function org-html-publish-to-templated-html
+           :auto-sitemap t
+           :sitemap-folders ignore
+           :sitemap-style list
+           :sitemap-title ,(concat personal-site-full-name "'s cooking blog")
+           :sitemap-filename "recipes.inc"
+           :sitemap-sort-files anti-chronologically
+           )
+          ,(org-simple-rss-alist
+            "homepage-rss"
+            :base-directory (expand-file-name "./blog")
+            :root-directory (expand-file-name "./")
+            :recursive t
+            :base-extension "org"
+            :publishing-directory (expand-file-name "./public_html/blog")
+            ;; Exclude the blog archive index autogenerated below
+            ;; Note that the regexp is relative to :base-directory
+            :exclude "^index.org"
+            ;; The location of the RSS file is relative to :base-directory
+            ;; Unfortunately, this is a limitation of using org-publish-sitemap
+            :rss-filename "rss.xml"
+            :rss-title "Juanjo García-Ripoll's blog"
+            :rss-description "My blog of Emacsy things, programming and science"
+            :rss-root "https://juanjose.garciaripoll.com/blog/")
+          ("homepage-pages"
+           :base-directory ,(expand-file-name "./")
+           :recursive t
+           :base-extension "org"
+           :include ("blog/index.org")
+           :exclude ,(regexp-opt '("blog" "recipes"))
+           :publishing-directory ,(expand-file-name "./public_html")
+           :section-numbers nil
+           :with-toc nil
+           :with-date nil
+           :html-template ,(templated-html-load-template "templates/index.html")
+           :publishing-function org-html-publish-to-templated-html
+           )
+          ("homepage-assets"
+           :base-directory "./"
+           :publishing-directory "./public_html"
+           :recursive t
+           :exclude "^\\(public_html\\|templates\\).*"
+           :base-extension "\\(jpg\\|gif\\|png\\|css\\|js\\|el\\|nb\\|ipynb\\|pdf\\|xml\\)"
+           :publishing-function org-publish-attachment)
+          ("homepage" :components ("homepage-blog" "homepage-recipes" "homepage-pages"
+                                   "homepage-rss" "homepage-assets"))
+          ))
+#+end_src
+
+** Build the site
+We build all web pages. Note that if you change the templates, you may need to use ~(org-publish "homepage" t)~ instead
+#+begin_src emacs-lisp :results nil
+  (let ((enable-local-variables :all)
+        (find-file-hook nil))
+    (org-publish "homepage"))
+#+end_src
+
+** Build the sitemap
+Many search engines rely on a file called ~sitemap.xml~ to index your site. We build it here.
+#+begin_src emacs-lisp :results nil
+  (create-sitemap-xml "public_html/sitemap.xml" "public_html" templated-html-site-url)
+#+end_src

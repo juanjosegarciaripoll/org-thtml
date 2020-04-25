@@ -1,0 +1,43 @@
+<div class="sidebar pure-u-1 pure-u-md-1-3">
+  <div class="header">
+    <a href="{{root}}"><img class="portrait" src="{{root}}images/me.jpg" alt="Juan José García Ripoll"/></a>
+    <h2 class="brand-title">{{personal-site-full-name}}</h2>
+    <h2 class="brand-tagline">Senior scientist</h2>
+    {{:if personal-site-organization}}
+      <h2 class="brand-tagline"><a href="{{personal-site-organization-url}}">{{personal-site-organization}}</a></h2>
+    {{:endif}}
+
+    <nav class="nav">
+      <ul class="nav-list">
+        {{:if personal-site-google-scholar-id}}
+          <li class="nav-item">
+            <a class="pure-button" href="https://scholar.google.es/citations?user={{personal-site-google-scholar-id}}&hl=en"><i class="fab fa-google big-icon"></i></a>
+          </li>
+        {{:endif}
+        {{:if personal-site-twitter}}
+          <li class="nav-item">
+            <a class="pure-button" href="https://twitter.com/{{personal-site-twitter}}"><i class="fab fa-twitter big-icon"></i></a>
+          </li>
+        {{:endif}}
+        {{:if personal-site-github}}
+          <li class="nav-item">
+            <a class="pure-button" href="https://github.com/{{personal-site-github}}"><i class="fab fa-github big-icon"></i></a>
+          </li>
+        {{:endif}}
+        {{:if personal-site-linkedin}}
+          <li class="nav-item">
+            <a class="pure-button" href="https://www.linkedin.com/in/{{personal-site-linkedin}}/"><i class="fab fa-linkedin big-icon"></i></a>
+          </li>
+        {{:endif}}
+        {{:if personal-site-email}}
+          <li class="nav-item">
+            <a class="pure-button" href="mailto:{{personal-site-email}}"><i class="fas fa-envelope big-icon"></i></a>
+          </li>
+        {{:endif}
+        <li class="nav-item">
+          <a class="pure-button" href="https://juanjose.garciaripoll.com/blog/rss.xml"><i class="fas fa-rss big-icon"></i></a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
