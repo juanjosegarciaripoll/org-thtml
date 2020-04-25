@@ -18,6 +18,11 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+;; We ensure the org infrastructure
+(require 'org)
+;; We need this for LOOP
+(require 'cl)
+
 (defvar templated-html-site-title "Homepage"
   "Default title for every page in the exported site")
 
@@ -93,6 +98,7 @@ Return output file name."
                  (description (if (plist-get info :description)
                                   (org-export-data (plist-get info :description) info)
                                 templated-html-site-description))
+                 (site-url (or (plist-get info :site-url) templated-html-site-url))
                  (with-title (plist-get info :with-title))
                  (title (if (plist-get info :title)
                             (org-export-data (plist-get info :title) info)

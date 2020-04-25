@@ -1,6 +1,8 @@
 *~
 .#*
 #*
+personal-site/blog/rss.xml
+personal-site/blog/sitemap.inc
 personal-site/images
 personal-site/public_html
-personal-site/templates
+personal-site/recipes/*.jpg

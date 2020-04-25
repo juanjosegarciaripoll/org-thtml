@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    {{:include "header.html"}}
+  </head>
+  <body>
+    <div id="layout" class="pure-g">
+      {{:include "sidebar.html"}}
+      <div class="content pure-u-1 pure-u-md-2-3">
+        {{:include "menubar.html"}}
+
+        <div id="content">
+          {{:if with-title}}<h1>{{title}}</h1>{{:endif}}
+          {{contents}}
+        </div>
+
+        {{:include "footer.html"}}
+      </div>
+    </div>
+  </body>
+</html>
