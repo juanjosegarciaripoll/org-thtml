@@ -476,8 +476,8 @@ If you want to use images, and have a good CSS to do this, you can make it more 
         <img src="blog/{{(templated-html-post-image-url item)}}">
         <h2>{{(plist item :title)}}</h2>
       </a>
+    </div>
     {{:endeach}}
-  </div>
 #+end_src
 
 
