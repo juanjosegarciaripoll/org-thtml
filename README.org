@@ -159,8 +159,8 @@ We construct our framework by extending ~ox-html~, the system that allows publis
   Return output file name."
     (org-publish-org-to 'templated-html filename
                 (concat "." (or (plist-get plist :html-extension)
-                        org-html-extension
-                        "html"))
+                                org-html-extension
+                                "html"))
                 plist pub-dir))
 
 #+end_src
