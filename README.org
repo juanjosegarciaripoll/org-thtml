@@ -401,6 +401,8 @@ The following utility function can be used to produce a simple RSS feed out of a
 
 #+end_src
 
+The RSS rule is used just as other org exporting rules. Please see the personal site example for one application.
+
 ** Bonus: sitemap.xml files
 The following utility creates a ~sitemap.xml~ file from a directory of HTML files. Sitemaps are important for search engines to index your site properly. This function crawls recursively the HTML folder, looking for HTML files that need to be indexed, and records them in the sitemap.
 #+begin_src emacs-lisp  :results silent :tangle ox-thtml.el
@@ -420,3 +422,5 @@ The following utility creates a ~sitemap.xml~ file from a directory of HTML file
         (insert "</urlset>"))))
 
 #+end_src
+
+The sitemap rule is used just as other org exporting rules. Please see the personal site example for one application.
