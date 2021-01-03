@@ -122,6 +122,9 @@ Please see [[file:personal-site/index.org][this working example]] within the org
 These variables are provided to help you configure your site more easily, with default values for title, site URL and description. They provide default values for the template variables ~title~, ~site-url~ and ~description~. While they are not essential, they are convenient.
 
 #+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defvar templated-html-version "0.3"
+    "Version number for the templated-html library")
+
   (defvar templated-html-site-title "Homepage"
     "Default title for every page in the exported site")
 
@@ -170,6 +173,7 @@ Our template mechanism translates a template file into a Lisp function that is u
 
 #+begin_src emacs-lisp :results silent :tangle ox-thtml.el
   (defvar templated-html--current-template nil)
+
   (defvar template-html-debug nil
     "If true, store a list of pairs ( org-content . project ) for each file that
   is processed by the templates while exporting.")
@@ -337,6 +341,145 @@ The following functions implement the special processing of conditionals, loops 
                   collect ,(templated-html--read-block :endeach))))
 
 #+end_src
+
+** Bonus: Parse projects
+Sometimes you may want to find the files in a project, to extract some of them, or apply some transformations. A common pattern would be to select the 4 newest posts with a given keyword, or construct the list of all posts for an RSS file.
+
+To aid in this purpose, we construct two utility functions. The first one is the core of the engine, running through all files in a project, with no particular order. It takes a function that can operate on the FILE-NAME and PROJECT. If the function returns a non-NIL value, it is collected.
+
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defun templated-html-map-files (project-name function)
+    "Apply a FUNCTION onto the files of a project with name PROJECT-NAME.
+  FUNCTION takes two arguments, the NAME of the absolute file name of the
+  resource or post, and the PROJECT itself. Only non-NIL outputs are collected."
+    (let ((project (assoc project-name org-publish-project-alist)))
+      (if (null project)
+          (error "There is no org-export project with name %S" project-name)
+        (let ((output nil)
+              (root (expand-file-name
+                     (file-name-as-directory
+                      (org-publish-property :base-directory project)))))
+          (cl-remove-if-not
+           'identity
+           (mapcar (lambda (file-name)
+                     (funcall function file-name project))
+                   (org-publish-get-base-files project)))))))
+#+end_src
+
+With this function it is easy to construct another function that only selects the files that we can consider to be posts -- just by looking at the extension --, and sorting the files with some of the usual orders.
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defun templated-html-all-posts (project-name &optional sort)
+    "Return a PLIST with all the posts in a project. Posts are identified by
+  having the extension .org. The PLIST contains the following fields
+
+    :ABSOLUTE-FILE-NAME  The file name of the post relative to the project
+    :FILE-NAME           Relative file name to the root
+    :TITLE               The title of the post
+    :DATE                The date of the post, as an integer number of seconds
+    :URL                 Link to the post, relative to the project's root
+    :PROJECT             The project object, for further querying
+    :PARSE-TREE          Initially NIL, unless you call TEMPLATED-HTML-POST
+                         on this record.
+    :IMAGE-URL           Initially NIL, unless you call TEMPLATED-HTML-POST-IMAGE-URL
+                         on this record.
+
+  plus all other fields that belong to the project plist.
+
+  SORT can be NIL, :NEWER, :OLDER, :TITLE or a predicate that compares two PLISTS.
+  If it is not NIL, it is used to sort the posts according to the given order."
+    (let ((posts (templated-html-map-files
+                  project-name
+                  (lambda (full-file-name project)
+                    (let ((file-name (file-relative-name full-file-name root)))
+                      (and (string= "org" (file-name-extension file-name))
+                           (cl-list* :absolute-file-name full-file-name
+                                     :file-name file-name
+                                     :title (org-publish-find-title file-name project)
+                                     :date (time-convert (org-publish-find-date file-name project)
+                                                         'integer)
+                                     :url (concat (file-name-sans-extension file-name) ".html")
+                                     :parse-tree nil
+                                     :image-url nil
+                                     :project project
+                                     (cdr project)
+                                     )))))))
+      (when sort
+        (cond ((eq sort :newer)
+               (setq sort (lambda (p1 p2)
+                            (<= (plist p1 :date)
+                                (plist p2 :date)))))
+              ((eq sort :older)
+               (setq sort (lambda (p1 p2)
+                            (<= (plist p1 :date)
+                                (plist p2 :date)))))
+              ((eq sort :title)
+               (setq sort (lambda (p1 p2)
+                            (string< (plist p1 :title)
+                                     (plist p2 :title))))))
+        (setq posts (sort posts sort)))
+      posts))
+#+end_src
+
+Given that it is very common, we create a function for the first few posts.
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defun templated-html-first-posts (project-name &optional n)
+    "Return the PLIST's of the N first posts. N defaults to 3."
+    (let ((l (templated-html-all-posts project-name)))
+      (cl-subseq l 0 (min (or n 3) (length l)))))
+#+end_src
+
+Sometimes we need to extract information from the posts by parsing the org files. The function ~templated-html-post-parse~ parses the file of a post, filling the ~:parse-tree~ keyword from the property list. With this function ~templated-html-post-image-url~ can find a representative image for the post.
+#+begin_src emacs-lisp :results silent :tangle ox-thtml.el
+  (defun templated-html-post-parse (record)
+    (if (plist-get record :parse-tree)
+        record
+      (let ((file-name (plist-get record :absolute-file-name)))
+        (let* ((org-inhibit-startup t)
+               (visiting (find-buffer-visiting file-name))
+               (work-buffer (or visiting (find-file-noselect file-name))))
+          (unwind-protect
+              (with-current-buffer work-buffer
+                (plist-put record :parse-tree (org-element-parse-buffer)))
+            ;; Remove opened buffer in the process.
+            (unless visiting (kill-buffer work-buffer)))))))
+
+  (defun templated-html-post-image-url (record)
+    "Return the path to a representative image for this post, relative
+  to the project's root. Images are found from the #+IMAGE keyword, or taken
+  from the first linked image in the file."
+    (let* ((tree (templated-html-post-parse record))
+           (image (or (templated-html--image-name tree)
+                      (car (templated-html--collect-images tree)))))
+      (when image
+        (let* ((base-url (file-name-directory (plist-get record :url)))
+               (image-url (concat base-url image)))
+          (plist-put record :image-url image-url)
+          image-url))))
+#+end_src
+
+We can use this to write a list of the first 10 posts in a project. Notice that we have to provide the path to the location of the posts! Our project only resolves paths relative to its root.
+#+begin_src html
+  <h1>Latest posts</h1>
+  <ul>
+    {{:each (templated-html-first-posts "my-blog" 10)}}
+    <li><a href="blog/{{(plist item :url)}}">{{(plist item :title)}}</a></li>
+    {{:endeach}}
+  </ul>
+#+end_src
+
+If you want to use images, and have a good CSS to do this, you can make it more colorful
+#+begin_src html
+  <h1>Latest posts</h1>
+    {{:each (templated-html-first-posts "my-blog" 10)}}
+    <div class="blog-post">
+      <a href="blog/{{(plist item :url)}}">
+        <img src="blog/{{(templated-html-post-image-url item)}}">
+        <h2>{{(plist item :title)}}</h2>
+      </a>
+    {{:endeach}}
+  </div>
+#+end_src
+
 
 ** Bonus: RSS files
 The following utility function can be used to produce a simple RSS feed out of a blog's sitemap. It copies the utility of the default sitemap producing function, hooks into the list creation process to engineer its own RSS feed. It was strongly inspired by [[https://writepermission.com/org-blogging-rss-feed.html][this blog post]], but has the advantage that it does not require ox-rss. On the downside, it produces much simpler RSS files, with no description and, right now, no image files.

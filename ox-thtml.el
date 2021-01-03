@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2019 Juan Jose Garcia Ripoll
 
-;; Author: Juan JosÃ© GarcÃ­a Ripoll <juanjose.garciaripoll@gmail.com>
+;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
 ;; URL: http://juanjose.garciaripoll.com
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -22,6 +22,9 @@
 (require 'org)
 ;; We need this for LOOP
 (require 'cl)
+
+(defvar templated-html-version "0.3"
+  "Version number for the templated-html library")
 
 (defvar templated-html-site-title "Homepage"
   "Default title for every page in the exported site")
@@ -53,11 +56,18 @@ publishing directory.
 Return output file name."
   (org-publish-org-to 'templated-html filename
               (concat "." (or (plist-get plist :html-extension)
-                      org-html-extension
-                      "html"))
+                              org-html-extension
+                              "html"))
               plist pub-dir))
 
 (defvar templated-html--current-template nil)
+
+(defvar template-html-debug nil
+  "If true, store a list of pairs ( org-content . project ) for each file that
+is processed by the templates while exporting.")
+
+(defvar template-html-debug-tree nil
+  "List of pairs of ( org-content . project ) constructed by the templates.")
 
 (defun templated-html-load-template (filename)
   (templated-html--byte-compile (templated-html--load-template filename)))
@@ -89,6 +99,8 @@ Return output file name."
 (defun templated-html--byte-compile (forms)
   (byte-compile
        `(lambda (contents info)
+          (when template-html-debug
+            (push (cons contents info) template-html-debug-tree))
           (let* ((real-root (expand-file-name (or (plist-get info :root-directory)
                                                   (plist-get info :base-directory))))
                  (input-file (plist-get info :input-file))
@@ -204,6 +216,105 @@ string, or an s-expression enclosed in a handlerbar {{form}}."
   `(apply 'concat
           (loop for item in ,(car form)
                 collect ,(templated-html--read-block :endeach))))
+
+(defun templated-html-map-files (project-name function)
+  "Apply a FUNCTION onto the files of a project with name PROJECT-NAME.
+FUNCTION takes two arguments, the NAME of the absolute file name of the
+resource or post, and the PROJECT itself. Only non-NIL outputs are collected."
+  (let ((project (assoc project-name org-publish-project-alist)))
+    (if (null project)
+        (error "There is no org-export project with name %S" project-name)
+      (let ((output nil)
+            (root (expand-file-name
+                   (file-name-as-directory
+                    (org-publish-property :base-directory project)))))
+        (cl-remove-if-not
+         'identity
+         (mapcar (lambda (file-name)
+                   (funcall function file-name project))
+                 (org-publish-get-base-files project)))))))
+
+(defun templated-html-all-posts (project-name &optional sort)
+  "Return a PLIST with all the posts in a project. Posts are identified by
+having the extension .org. The PLIST contains the following fields
+
+  :ABSOLUTE-FILE-NAME  The file name of the post relative to the project
+  :FILE-NAME           Relative file name to the root
+  :TITLE               The title of the post
+  :DATE                The date of the post, as an integer number of seconds
+  :URL                 Link to the post, relative to the project's root
+  :PROJECT             The project object, for further querying
+  :PARSE-TREE          Initially NIL, unless you call TEMPLATED-HTML-POST
+                       on this record.
+  :IMAGE-URL           Initially NIL, unless you call TEMPLATED-HTML-POST-IMAGE-URL
+                       on this record.
+
+plus all other fields that belong to the project plist.
+
+SORT can be NIL, :NEWER, :OLDER, :TITLE or a predicate that compares two PLISTS.
+If it is not NIL, it is used to sort the posts according to the given order."
+  (let ((posts (templated-html-map-files
+                project-name
+                (lambda (full-file-name project)
+                  (let ((file-name (file-relative-name full-file-name root)))
+                    (and (string= "org" (file-name-extension file-name))
+                         (cl-list* :absolute-file-name full-file-name
+                                   :file-name file-name
+                                   :title (org-publish-find-title file-name project)
+                                   :date (time-convert (org-publish-find-date file-name project)
+                                                       'integer)
+                                   :url (concat (file-name-sans-extension file-name) ".html")
+                                   :parse-tree nil
+                                   :image-url nil
+                                   :project project
+                                   (cdr project)
+                                   )))))))
+    (when sort
+      (cond ((eq sort :newer)
+             (setq sort (lambda (p1 p2)
+                          (<= (plist p1 :date)
+                              (plist p2 :date)))))
+            ((eq sort :older)
+             (setq sort (lambda (p1 p2)
+                          (<= (plist p1 :date)
+                              (plist p2 :date)))))
+            ((eq sort :title)
+             (setq sort (lambda (p1 p2)
+                          (string< (plist p1 :title)
+                                   (plist p2 :title))))))
+      (setq posts (sort posts sort)))
+    posts))
+
+(defun templated-html-first-posts (project-name &optional n)
+  "Return the PLIST's of the N first posts. N defaults to 3."
+  (let ((l (templated-html-all-posts project-name)))
+    (cl-subseq l 0 (min (or n 3) (length l)))))
+
+(defun templated-html-post-parse (record)
+  (if (plist-get record :parse-tree)
+      record
+    (let ((file-name (plist-get record :absolute-file-name)))
+      (let* ((org-inhibit-startup t)
+             (visiting (find-buffer-visiting file-name))
+             (work-buffer (or visiting (find-file-noselect file-name))))
+        (unwind-protect
+            (with-current-buffer work-buffer
+              (plist-put record :parse-tree (org-element-parse-buffer)))
+          ;; Remove opened buffer in the process.
+          (unless visiting (kill-buffer work-buffer)))))))
+
+(defun templated-html-post-image-url (record)
+  "Return the path to a representative image for this post, relative
+to the project's root. Images are found from the #+IMAGE keyword, or taken
+from the first linked image in the file."
+  (let* ((tree (templated-html-post-parse record))
+         (image (or (templated-html--image-name tree)
+                    (car (templated-html--collect-images tree)))))
+    (when image
+      (let* ((base-url (file-name-directory (plist-get record :url)))
+             (image-url (concat base-url image)))
+        (plist-put record :image-url image-url)
+        image-url))))
 
 (defun org-simple-rss--body (title description root list)
   "Generate RSS feed, as a string.
