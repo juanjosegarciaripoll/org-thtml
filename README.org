@@ -170,6 +170,12 @@ Our template mechanism translates a template file into a Lisp function that is u
 
 #+begin_src emacs-lisp :results silent :tangle ox-thtml.el
   (defvar templated-html--current-template nil)
+  (defvar template-html-debug nil
+    "If true, store a list of pairs ( org-content . project ) for each file that
+  is processed by the templates while exporting.")
+
+  (defvar template-html-debug-tree nil
+    "List of pairs of ( org-content . project ) constructed by the templates.")
 
   (defun templated-html-load-template (filename)
     (templated-html--byte-compile (templated-html--load-template filename)))
@@ -201,6 +207,8 @@ Our template mechanism translates a template file into a Lisp function that is u
   (defun templated-html--byte-compile (forms)
     (byte-compile
          `(lambda (contents info)
+            (when template-html-debug
+              (push (cons contents info) template-html-debug-tree))
             (let* ((real-root (expand-file-name (or (plist-get info :root-directory)
                                                     (plist-get info :base-directory))))
                    (input-file (plist-get info :input-file))
