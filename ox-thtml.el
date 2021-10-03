@@ -410,3 +410,4 @@ PROJECT is the current project."
             do (insert (format "<url>\n <loc>%s/%s</loc>\n <priority>0.5</priority>\n</url>\n"
                                base-url (file-relative-name file directory))))
       (insert "</urlset>"))))
+;;; ox-thtml.el ends here
