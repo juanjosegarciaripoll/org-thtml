@@ -1,10 +1,18 @@
 ;;; ox-thtml.el --- Handlebar-style templates for org-mode
 
-;; Copyright (C) 2019 Juan Jose Garcia Ripoll
+;;; Copyright (C) 2019 Juan Jose Garcia Ripoll
 
-;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
-;; URL: http://juanjose.garciaripoll.com
+;;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
+;;; Created: April 25 2020
+;;; Keywords: org html web
+;;; Version: 1.0
+;;; URL: http://juanjose.garciaripoll.com
 
+
+;;; License:
+
+;; This file is not part of GNU Emacs.
+;; 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
@@ -17,6 +25,13 @@
 ;;
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; ox-html.el is an HTML templating system for Emacs and Org mode.
+;; See the README for details.
+
+;;; Code:
 
 ;; We ensure the org infrastructure
 (require 'org)
