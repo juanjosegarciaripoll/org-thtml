@@ -1,12 +1,12 @@
 ;;; ox-thtml.el --- Handlebar-style templates for org-mode
 
-;;; Copyright (C) 2019 Juan Jose Garcia Ripoll
+;; Copyright (C) 2019 Juan Jose Garcia Ripoll
 
-;;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
-;;; Created: April 25 2020
-;;; Keywords: org html web
-;;; Version: 1.0
-;;; URL: http://juanjose.garciaripoll.com
+;; Author: Juan José García Ripoll <juanjose.garciaripoll@gmail.com>
+;; Created: April 25 2020
+;; Keywords: org html web
+;; Version: 1.0
+;; URL: http://juanjose.garciaripoll.com
 
 
 ;;; License:
