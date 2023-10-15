@@ -200,7 +200,7 @@ string, or an s-expression enclosed in a handlerbar {{form}}."
                (buffer-substring beg (- (point) 2))
              (buffer-substring beg (point-max)))))))
 
-(defun templated-html--relative-path (input base)
+(defun templated-html--relative-path (input-file base)
   (apply 'concatenate 'string
            (loop for i in (rest (split-string (file-relative-name input-file base)
                                         "[/\\]"))
